@@ -1,4 +1,8 @@
-plugins { id 'com.android.application' }
+plugins {
+    id 'com.android.application'
+    id 'org.jetbrains.kotlin.android'
+    id 'org.jetbrains.kotlin.plugin.compose'
+}
 
 android {
     namespace 'app.wraith.client'
@@ -7,22 +11,21 @@ android {
         applicationId 'app.wraith.client'
         minSdk 26
         targetSdk 35
-        versionCode 78
-        versionName '0.12.3'
-        testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
+        versionCode 81
+        versionName '0.13.1'
     }
     compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17; coreLibraryDesugaringEnabled true }
-    buildFeatures { buildConfig true }
+    kotlinOptions { jvmTarget = '17' }
+    buildFeatures { buildConfig true; compose true }
     buildTypes {
         release { minifyEnabled false }
     }
     packaging { jniLibs { useLegacyPackaging = true } }
     lint { abortOnError true }
-    testOptions { unitTests { includeAndroidResources = true; all { systemProperty 'wraith.screens', project.layout.buildDirectory.dir('screens').get().asFile.absolutePath } } }
 }
 
-// gomobile's bindings are JVM classfiles. Android's separate class loader needs DEX,
-// and is loaded in the isolated :xray process.
+// gomobile's bindings are JVM classfiles. Android's separate class loader needs DEX, and it is
+// loaded in the isolated :xray process only.
 def xrayDexAssets = layout.buildDirectory.dir('generated/xrayAssets')
 android.sourceSets.main.assets.srcDir(xrayDexAssets)
 def dexXrayBindings = tasks.register('dexXrayBindings', JavaExec) {
@@ -42,34 +45,29 @@ def dexXrayBindings = tasks.register('dexXrayBindings', JavaExec) {
     doLast {
         def generated = new java.util.zip.ZipFile(dexJar.get().asFile)
         try {
-            if (generated.getEntry('classes.dex') == null) {
-                throw new GradleException('Xray bindings asset has no classes.dex')
-            }
-        } finally {
-            generated.close()
-        }
+            if (generated.getEntry('classes.dex') == null) throw new GradleException('Xray bindings asset has no classes.dex')
+        } finally { generated.close() }
     }
 }
 tasks.configureEach {
-    // Lint models read the generated asset directory too; without the dependency Gradle 8.10
-    // rejects lintDebug ("uses this output of task ':app:dexXrayBindings'").
     if ((name.startsWith('merge') && name.endsWith('Assets')) || name.toLowerCase().contains('lint')) dependsOn(dexXrayBindings)
 }
 
 dependencies {
     coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.1.4'
-    // JNI classes are kept in assets and loaded child-first by :xray; this avoids DEX duplicates
-    // in the app's own DEX. The AAR contributes only Xray's native libraries.
+    // JNI classes are kept in assets and loaded child-first by :xray; the AAR contributes only
+    // Xray's native libraries.
     implementation files('libs/libXray.aar')
-    implementation 'androidx.core:core:1.15.0'
-    implementation 'com.google.android.material:material:1.12.0'
-    implementation 'androidx.appcompat:appcompat:1.7.0'
+    implementation 'androidx.core:core-ktx:1.15.0'
+    implementation 'androidx.activity:activity-compose:1.9.3'
+    implementation 'androidx.lifecycle:lifecycle-viewmodel-compose:2.8.7'
+    implementation 'androidx.lifecycle:lifecycle-runtime-compose:2.8.7'
+    implementation platform('androidx.compose:compose-bom:2024.12.01')
+    implementation 'androidx.compose.ui:ui'
+    implementation 'androidx.compose.foundation:foundation'
+    implementation 'androidx.compose.material3:material3'
+    implementation 'androidx.compose.animation:animation'
+    implementation 'androidx.palette:palette-ktx:1.0.0'
     implementation 'com.journeyapps:zxing-android-embedded:4.3.0'
     implementation 'com.google.zxing:core:3.5.3'
-    testImplementation 'junit:junit:4.13.2'
-    testImplementation 'org.robolectric:robolectric:4.14.1'
-    testImplementation 'androidx.test:core:1.6.1'
-    testImplementation 'org.json:json:20240303'
-    androidTestImplementation 'androidx.test:runner:1.6.2'
-    androidTestImplementation 'androidx.test.ext:junit:1.2.1'
 }

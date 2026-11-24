@@ -10,7 +10,5 @@ app/libs/
 *.aab
 *.jks
 *.keystore
-Wraith.Windows/bin/
-Wraith.Windows/obj/
-Wraith.Windows/release/
 .tools/
+.kotlin/
