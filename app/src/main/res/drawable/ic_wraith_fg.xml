@@ -1,0 +1,7 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="108dp" android:height="108dp" android:viewportWidth="108" android:viewportHeight="108">
+    <!-- Scaled into the adaptive icon's safe zone, so no launcher mask cuts the mark. -->
+    <group android:pivotX="54" android:pivotY="52" android:scaleX="0.86" android:scaleY="0.86">
+        <path android:fillColor="@color/wraith_icon_fg" android:pathData="M27,34 L37,34 L43,63 L51,43 L58,43 L66,63 L72,34 L82,34 L71,76 L62,76 L54,57 L46,76 L37,76 Z"/>
+        <path android:fillColor="@color/wraith_icon_fg" android:pathData="M51,27h7v7h-7z"/>
+    </group>
+</vector>

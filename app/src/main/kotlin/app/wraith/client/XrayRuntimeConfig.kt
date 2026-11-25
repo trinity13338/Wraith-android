@@ -48,7 +48,7 @@ object XrayRuntimeConfig {
             rules = insertRule(rules, head++, jsonOf("type" to "field", "ip" to jsonArrayOf("geoip:private"), "outboundTag" to tags.direct))
         routing.put("rules", rules)
         if (source.startsWith("{")) { appendUserRules(rules, state, tags); appendAutoCatchAll(rules, root) } else appendRules(rules, state, profile, settings, tags)
-        val mode = settings.optString("mode", "rules")
+        val mode = "rules" // routing is always by rules (0.13.2)
         if (mode == "direct" || mode == "global") {
             val all = jsonOf("type" to "field", "inboundTag" to jsonArrayOf("tun-in", "socks", "http"))
             val balancer = if (mode != "global") "" else if (hasBalancer(root, AUTO_BALANCER)) AUTO_BALANCER else if (providerBalancing(root)) mainBalancer(root) else ""
@@ -319,7 +319,7 @@ object XrayRuntimeConfig {
 
     private fun appendRules(out: JSONArray, state: JSONObject, profile: JSONObject, settings: JSONObject, tags: AppTags) {
         val routing = RoutingConfig.profileFor(state, profile)
-        val mode = settings.optString("mode", "rules")
+        val mode = "rules" // routing is always by rules (0.13.2)
         val global = mode == "global" || RoutingConfig.globalProxy(routing)
         if (mode != "direct") RoutingConfig.rulesFor(state, profile).objects().forEach { appendRule(out, it, tags) }
         if (!global && routing != null) out.put(jsonOf("type" to "field", "inboundTag" to jsonArrayOf("tun-in", "socks", "http"), "outboundTag" to tags.direct))

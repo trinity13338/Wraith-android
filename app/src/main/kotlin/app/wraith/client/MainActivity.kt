@@ -115,7 +115,7 @@ private fun App(m: AppModel) {
     val rev by m.revision.collectAsState()
     val status by Tunnel.status.collectAsState()
     val settings = remember(rev) { m.store.settings() }
-    val accentKey = settings.optString("accent", "sakura")
+    val accentKey = settings.optString("accent", "system")
     val accent = when (accentKey) {
         "photo" -> m.photoAccent ?: ACCENTS.getValue("sakura")
         "system" -> if (Build.VERSION.SDK_INT >= 31) Color(m.ctx.getColor(android.R.color.system_accent1_200)) else ACCENTS.getValue("sakura")

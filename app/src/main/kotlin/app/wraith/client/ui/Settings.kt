@@ -133,46 +133,45 @@ private fun RootPage(m: AppModel, s: JSONObject) {
             }
         }
         section(L.t("Подключение", "Connection")) {
-            val mode = s.optString("mode", "rules")
-            SettingRow(L.t("Маршрутизация", "Routing"), routingLabel(mode) + L.t(" · своих правил: ", " · custom rules: ") + m.store.rules().size, Ic.Route) { m.pages += "routing" }
+            SettingRow(L.t("Маршрутизация", "Routing"), L.t("Своих правил: ", "Custom rules: ") + m.store.rules().size, Ic.Route) { m.pages += "routing" }
             Divider()
-            SettingRow(L.t("Туннель и обход блокировок", "Tunnel and DPI bypass"), L.t("DPI, DNS, MTU, локальный прокси", "DPI, DNS, MTU, local proxy"), Ic.Shield) { m.pages += "tunnel" }
+            SettingRow(L.t("Туннель и обход блокировок", "Tunnel and DPI bypass"), null, Ic.Shield) { m.pages += "tunnel" }
             Divider()
             SettingRow(L.t("Приложения через VPN", "Apps through VPN"), appModeSummary(s), Ic.Apps) { m.pages += "apps" }
             Divider()
-            SwitchRow(L.t("Автозапуск", "Autostart"), L.t("Подключаться после перезагрузки телефона", "Connect after the phone restarts"), Ic.Power, s.optBoolean("autoConnect")) { m.setting("autoConnect", it) }
+            SwitchRow(L.t("Автозапуск", "Autostart"), null, Ic.Power, s.optBoolean("autoConnect")) { m.setting("autoConnect", it) }
             Divider()
-            SwitchRow(L.t("Быстрый сервер автоматически", "Fastest server automatically"), L.t("Выбирать самый быстрый сервер профиля, проверка раз в 3 минуты", "Pick the fastest server of the profile, checked every 3 minutes"), Ic.Bolt, s.optBoolean("autoSelect")) { m.setting("autoSelect", it) }
+            SwitchRow(L.t("Быстрый сервер автоматически", "Fastest server automatically"), null, Ic.Bolt, s.optBoolean("autoSelect")) { m.setting("autoSelect", it) }
         }
         section(L.t("Серверы", "Servers")) {
-            SettingRow(L.t("Подписки", "Subscriptions"), L.t("Обновление, сортировка, данные для провайдера", "Updates, sorting, data for the provider"), Ic.Refresh) { m.pages += "subscriptions" }
+            SettingRow(L.t("Подписки", "Subscriptions"), null, Ic.Refresh) { m.pages += "subscriptions" }
             Divider()
-            SettingRow(L.t("Проверка задержки", "Latency check"), Ping.label(s.optString("pingType", "proxyGet")), Ic.Pulse) { m.pages += "ping" }
+            SettingRow(L.t("Пинг", "Ping"), Ping.label(s.optString("pingType", "proxyGet")), Ic.Pulse) { m.pages += "ping" }
         }
         section(L.t("Оформление", "Appearance")) {
             SettingRow(L.t("Фон, цвета и приветствие", "Background, colours and greeting"), if (m.photo != null) L.t("Своё фото", "Own photo") else L.t("Живой градиент", "Live gradient"), Ic.Palette) { m.pages += "appearance" }
         }
         section(L.t("Данные", "Data")) {
-            SettingRow(L.t("Экспорт резервной копии", "Export a backup"), L.t("Содержит ключи подключений — храните в закрытом месте", "Contains connection keys — keep it private"), Ic.Download) {
+            SettingRow(L.t("Экспорт резервной копии", "Export a backup"), null, Ic.Download) {
                 m.confirm = Confirm(L.t("Экспорт содержит ключи", "The export contains keys"), L.t("Резервная копия — обычный JSON-файл с вашими серверами. Не отправляйте его другим.", "The backup is a plain JSON file with your servers. Do not send it to anyone."), L.t("Экспорт", "Export")) { m.host?.export("wraith-backup.json", m.store.backup()) }
             }
             Divider()
-            SettingRow(L.t("Восстановить из файла", "Restore from a file"), L.t("Заменит текущие серверы и настройки", "Replaces current servers and settings"), Ic.Layers) {
+            SettingRow(L.t("Восстановить из файла", "Restore from a file"), null, Ic.Layers) {
                 m.confirm = Confirm(L.t("Заменить текущие данные?", "Replace current data?"), L.t("Серверы, подписки и настройки будут заменены. Подключение остановится.", "Servers, subscriptions and settings will be replaced. The connection stops."), L.t("Выбрать файл", "Pick a file")) { m.host?.openDocument(PURPOSE_RESTORE) }
             }
             Divider()
-            SettingRow(L.t("Журнал", "Log"), L.t("События приложения и ядра Xray", "App and Xray core events"), Ic.Log) { m.pages += "logs" }
+            SettingRow(L.t("Журнал", "Log"), null, Ic.Log) { m.pages += "logs" }
             Divider()
-            SettingRow(L.t("Сбросить настройки", "Reset settings"), L.t("Серверы, подписки и правила останутся", "Servers, subscriptions and rules are kept"), Ic.Refresh, danger = true) {
+            SettingRow(L.t("Сбросить настройки", "Reset settings"), null, Ic.Refresh, danger = true) {
                 m.confirm = Confirm(L.t("Сбросить настройки?", "Reset the settings?"), L.t("Настройки вернутся к значениям по умолчанию.", "Settings return to defaults."), L.t("Сбросить", "Reset"), true) { m.store.resetSettings(); m.changed() }
             }
         }
         section(L.t("О приложении", "About")) {
             SettingRow(L.t("Проверить обновления", "Check for updates"), L.t("Установлена ", "Installed ") + WraithApp.VERSION, Ic.Sparkle) { m.checkUpdates() }
             Divider()
-            SettingRow(L.t("Команды wraith://", "wraith:// commands"), L.t("Для автоматизаций и ярлыков", "For automations and shortcuts"), Ic.Link) { m.pages += "schemes" }
+            SettingRow(L.t("Команды wraith://", "wraith:// commands"), null, Ic.Link) { m.pages += "schemes" }
             Divider()
-            SettingRow(L.t("О Wraith", "About Wraith"), L.t("Клиент Xray. Без телеметрии и аналитики. GPL-3.0", "Xray client. No telemetry or analytics. GPL-3.0"), Ic.Info) {
+            SettingRow(L.t("О Wraith", "About Wraith"), null, Ic.Info) {
                 m.info = "Wraith ${WraithApp.VERSION}" to L.t("Клиент для VLESS, VMess, Trojan, Shadowsocks, Hysteria2 и WireGuard на ядре Xray.\n\nНикакой статистики об использовании не собирается. Обновления проверяются через GitHub, в запросе только версия приложения.\n\nЛицензия GPL-3.0-or-later. Xray-core — MPL-2.0, libXray — MIT, флаги — flag-icons (MIT).",
                     "A client for VLESS, VMess, Trojan, Shadowsocks, Hysteria2 and WireGuard on the Xray core.\n\nNo usage statistics are collected. Updates are checked on GitHub; the request carries only the app version.\n\nLicence GPL-3.0-or-later. Xray-core — MPL-2.0, libXray — MIT, flags — flag-icons (MIT).")
             }
@@ -203,26 +202,16 @@ private fun Segmented(values: List<String>, labels: List<String>, current: Strin
 private fun RoutingPage(m: AppModel, s: JSONObject) {
     val rev by m.revision.collectAsState()
     val rules = remember(rev) { m.store.rules() }
-    val mode = s.optString("mode", "rules")
-    Page(m, L.t("Маршрутизация", "Routing"), L.t("Какой трафик идёт через VPN", "Which traffic goes through the VPN")) {
-        item {
-            Spacer(Modifier.height(12.dp))
-            Segmented(listOf("rules", "global", "direct"), listOf(L.t("Правила", "Rules"), L.t("Всё в VPN", "All VPN"), L.t("Напрямую", "Direct")), mode) { m.setting("mode", it) }
-            Text(when (mode) {
-                "global" -> L.t("Весь трафик идёт через VPN; правила не применяются.", "All traffic goes through the VPN; rules are not applied.")
-                "direct" -> L.t("VPN не используется: весь трафик идёт напрямую.", "The VPN is not used: all traffic goes direct.")
-                else -> L.t("Сначала правила провайдера, затем ваши правила ниже.", "Provider rules first, then your rules below.")
-            }, Modifier.padding(horizontal = 24.dp, vertical = 10.dp), color = W.muted, style = MaterialTheme.typography.bodySmall)
-        }
+    Page(m, L.t("Маршрутизация", "Routing")) {
         section(L.t("Общие", "General")) {
-            SwitchRow(L.t("Локальная сеть напрямую", "Local network direct"), L.t("Роутер, принтеры, частные IP", "Router, printers, private IPs"), Ic.Wifi, s.optBoolean("bypassLan", true)) { m.setting("bypassLan", it) }
+            SwitchRow(L.t("Локальная сеть напрямую", "Local network direct"), null, Ic.Wifi, s.optBoolean("bypassLan", true)) { m.setting("bypassLan", it) }
             Divider()
-            SwitchRow(L.t("Определять домены", "Detect domains"), L.t("Sniffing: правила по доменам работают и для приложений с DoH", "Sniffing: domain rules work even for apps with DoH"), Ic.Eye, s.optBoolean("sniff", true)) { m.setting("sniff", it) }
+            SwitchRow(L.t("Определять домены", "Detect domains"), null, Ic.Eye, s.optBoolean("sniff", true)) { m.setting("sniff", it) }
         }
         item { SectionTitle(L.t("Свои правила", "Custom rules")) }
         item {
             Group {
-                if (rules.isEmpty()) SettingRow(L.t("Правил пока нет", "No rules yet"), L.t("Например: сайты банков — напрямую", "For example: bank sites — direct"), Ic.Route) { m.ruleEdit = -1 to null }
+                if (rules.isEmpty()) SettingRow(L.t("Правил пока нет", "No rules yet"), null, Ic.Route) { m.ruleEdit = -1 to null }
                 rules.forEachIndexed { i, r ->
                     if (i > 0) Divider()
                     val action = r.optString("action", "proxy")
@@ -250,9 +239,9 @@ private fun RoutingPage(m: AppModel, s: JSONObject) {
 
 @Composable
 private fun TunnelPage(m: AppModel, s: JSONObject) {
-    Page(m, L.t("Туннель", "Tunnel"), L.t("Обход блокировок, сеть и локальный прокси", "DPI bypass, network and local proxy")) {
+    Page(m, L.t("Туннель", "Tunnel")) {
         section(L.t("Обход DPI", "DPI bypass")) {
-            SwitchRow(L.t("Фрагментация", "Fragmentation"), L.t("Дробит начало TLS-соединения с сервером, чтобы DPI его не узнал", "Splits the start of the TLS connection so DPI does not recognise it"), Ic.Layers, s.optBoolean("fragment")) { m.setting("fragment", it) }
+            SwitchRow(L.t("Фрагментация", "Fragmentation"), null, Ic.Layers, s.optBoolean("fragment")) { m.setting("fragment", it) }
             if (s.optBoolean("fragment")) {
                 Divider()
                 SettingRow(L.t("Что дробить", "What to split"), s.optString("fragmentPackets", "tlshello")) { m.pick(L.t("Какие пакеты дробить", "Which packets"), listOf(L.t("tlshello · только ClientHello", "tlshello · ClientHello only"), "1-3", "1-5"), listOf("tlshello", "1-3", "1-5"), "fragmentPackets", s.optString("fragmentPackets", "tlshello")) }
@@ -264,7 +253,7 @@ private fun TunnelPage(m: AppModel, s: JSONObject) {
                 SettingRow(L.t("Максимум частей", "Maximum parts"), s.optString("fragmentMaxSplit").ifEmpty { L.t("без ограничения", "no limit") }) { m.rangeSetting(L.t("Максимальное разделение (пусто — без ограничения)", "Maximum split (empty — no limit)"), "fragmentMaxSplit", s.optString("fragmentMaxSplit")) }
             }
             Divider()
-            SwitchRow(L.t("Шумы", "Noise"), L.t("Мусорные UDP-пакеты перед первым настоящим: помогает Hysteria2 и QUIC", "Junk UDP packets before the first real one: helps Hysteria2 and QUIC"), Ic.Sparkle, s.optBoolean("noise")) { m.setting("noise", it) }
+            SwitchRow(L.t("Шумы", "Noise"), null, Ic.Sparkle, s.optBoolean("noise")) { m.setting("noise", it) }
             if (s.optBoolean("noise")) {
                 val type = s.optString("noiseType", "array")
                 Divider()
@@ -276,18 +265,18 @@ private fun TunnelPage(m: AppModel, s: JSONObject) {
                 SettingRow(L.t("Задержка, мс", "Delay, ms"), s.optString("noiseDelay", "10-16")) { m.rangeSetting(L.t("Задержка шума, мс", "Noise delay, ms"), "noiseDelay", s.optString("noiseDelay", "10-16")) }
             }
             Divider()
-            SwitchRow("Mux", L.t("Несколько соединений в одном. Не применяется к Vision, Hysteria и WireGuard", "Several connections in one. Not used with Vision, Hysteria and WireGuard"), Ic.Route, s.optBoolean("mux")) { m.setting("mux", it) }
+            SwitchRow("Mux", null, Ic.Route, s.optBoolean("mux")) { m.setting("mux", it) }
             if (s.optBoolean("mux")) { Divider(); SettingRow(L.t("Потоков на соединение", "Streams per connection"), s.optInt("muxConcurrency", 8).toString()) { m.number(L.t("Потоков на соединение", "Streams per connection"), "muxConcurrency", s.optInt("muxConcurrency", 8), 1, 1024) } }
             Divider()
-            SettingRow(L.t("QUIC (UDP 443)", "QUIC (UDP 443)"), if (s.optString("quic", "allow") == "reject") L.t("Блокировать — браузеры уйдут на TCP", "Block — browsers fall back to TCP") else L.t("Пропускать", "Allow")) {
+            SettingRow(L.t("QUIC (UDP 443)", "QUIC (UDP 443)"), if (s.optString("quic", "allow") == "reject") L.t("Блокировать", "Block") else L.t("Пропускать", "Allow")) {
                 m.pick("QUIC", listOf(L.t("Пропускать", "Allow"), L.t("Блокировать, браузер перейдёт на TCP", "Block, the browser falls back to TCP")), listOf("allow", "reject"), "quic", s.optString("quic", "allow"))
             }
         }
         section("DNS") {
-            SwitchRow(L.t("DNS из конфигурации", "DNS from the configuration"), L.t("DNS провайдера из JSON или профиля маршрутизации", "Provider DNS from the JSON or routing profile"), Ic.Dns, s.optBoolean("dnsFromJson")) { m.setting("dnsFromJson", it) }
+            SwitchRow(L.t("DNS из конфигурации", "DNS from the configuration"), null, Ic.Dns, s.optBoolean("dnsFromJson")) { m.setting("dnsFromJson", it) }
             Divider()
             val custom = s.optBoolean("customDns")
-            SwitchRow(L.t("Свой DNS", "Own DNS"), if (custom) L.t("Запросы идут на адрес ниже", "Queries go to the address below") else L.t("Выключено — DNS сети телефона (Wi-Fi или оператор)", "Off — the phone network's DNS (Wi-Fi or carrier)"), Ic.Globe, custom) { m.setting("customDns", it) }
+            SwitchRow(L.t("Свой DNS", "Own DNS"), null, Ic.Globe, custom) { m.setting("customDns", it) }
             if (custom) { Divider(); SettingRow(L.t("Адрес DNS", "DNS address"), s.optString("tunnelDns").ifEmpty { DnsChoice.DEFAULT_CUSTOM }) {
                 m.input = Input(L.t("DNS: https://…, quic+local://… или IP", "DNS: https://…, quic+local://… or IP"), s.optString("tunnelDns")) { v -> DnsChoice.validate(v); m.store.setting("tunnelDns", v.trim()); m.changed() }
             } }
@@ -307,13 +296,13 @@ private fun TunnelPage(m: AppModel, s: JSONObject) {
                 }
             }
             Divider()
-            SwitchRow(L.t("Скорость в уведомлении", "Speed in the notification"), null, Ic.Bell, s.optBoolean("notifySpeed")) { m.setting("notifySpeed", it) }
+            SwitchRow(L.t("Скорость в уведомлении", "Speed in the notification"), null, Ic.Bell, s.optBoolean("notifySpeed", true)) { m.setting("notifySpeed", it) }
             Divider()
-            SettingRow(L.t("Постоянный VPN и блокировка", "Always-on VPN and lockdown"), L.t("Системные настройки Android", "Android system settings"), Ic.Lock) { m.host?.open(Intent(AndroidSettings.ACTION_VPN_SETTINGS)) }
+            SettingRow(L.t("Постоянный VPN и блокировка", "Always-on VPN and lockdown"), null, Ic.Lock) { m.host?.open(Intent(AndroidSettings.ACTION_VPN_SETTINGS)) }
         }
         section(L.t("Локальный прокси", "Local proxy")) {
             val on = s.optBoolean("localProxy")
-            SwitchRow(L.t("SOCKS5 / HTTP прокси", "SOCKS5 / HTTP proxy"), L.t("Для приложений, которые умеют работать через прокси. Всегда с логином и паролем.", "For apps that can use a proxy. Always with a login and password."), Ic.Lock, on) {
+            SwitchRow(L.t("SOCKS5 / HTTP прокси", "SOCKS5 / HTTP proxy"), null, Ic.Lock, on) {
                 if (it) m.store.ensureProxyCredentials()
                 m.setting("localProxy", it)
             }
@@ -329,11 +318,11 @@ private fun TunnelPage(m: AppModel, s: JSONObject) {
                 Divider()
                 SettingRow(L.t("Пароль", "Password"), s.optString("proxyPassword").take(4) + "••••••••••••", trailing = { Icon(Ic.Copy, null, Modifier.size(18.dp), tint = W.faint) }) { m.copy(s.optString("proxyPassword"), L.t("Пароль скопирован", "Password copied")) }
                 Divider()
-                SettingRow(L.t("Новый пароль", "New password"), L.t("Старый перестанет работать", "The old one stops working"), Ic.Refresh) {
+                SettingRow(L.t("Новый пароль", "New password"), null, Ic.Refresh) {
                     m.confirm = Confirm(L.t("Сменить пароль прокси?", "Change the proxy password?"), L.t("Приложениям, которые используют прокси, нужно будет ввести новый.", "Apps using the proxy will need the new one."), L.t("Сменить", "Change")) { m.store.setting("proxyPassword", Store.randomSecret(20)); m.changed() }
                 }
                 Divider()
-                SwitchRow(L.t("Доступ из локальной сети", "Access from the local network"), L.t("Другие устройства в Wi-Fi смогут подключиться по паролю", "Other devices on the Wi-Fi can connect with the password"), Ic.Wifi, lan) { m.setting("allowLan", it) }
+                SwitchRow(L.t("Доступ из локальной сети", "Access from the local network"), null, Ic.Wifi, lan) { m.setting("allowLan", it) }
             }
         }
     }
@@ -355,11 +344,7 @@ private fun AppsPage(m: AppModel, s: JSONObject) {
         item {
             Spacer(Modifier.height(12.dp))
             Segmented(listOf("off", "include", "exclude"), listOf(L.t("Все", "All"), L.t("Только эти", "Only these"), L.t("Кроме этих", "Except these")), mode) { m.setting("appMode", it) }
-            Text(when (mode) {
-                "include" -> L.t("Через VPN идут только отмеченные приложения и сам Wraith.", "Only the checked apps and Wraith itself go through the VPN.")
-                "exclude" -> L.t("Отмеченные приложения идут напрямую, остальные — через VPN.", "The checked apps go direct, the rest through the VPN.")
-                else -> L.t("Все приложения, включая Wraith, используют VPN.", "All apps, Wraith included, use the VPN.")
-            }, Modifier.padding(horizontal = 24.dp, vertical = 10.dp), color = W.muted, style = MaterialTheme.typography.bodySmall)
+            Spacer(Modifier.height(8.dp))
             if (mode == "include" && selected.isEmpty()) Text(L.t("Отметьте хотя бы одно приложение, иначе VPN не запустится.", "Check at least one app, otherwise the VPN will not start."), Modifier.padding(horizontal = 24.dp), color = W.bad, style = MaterialTheme.typography.bodySmall)
             if (mode != "off") Box(Modifier.padding(16.dp)) { SearchField(query, L.t("Поиск приложений", "Search apps")) { query = it } }
         }
@@ -393,12 +378,12 @@ private fun AppsPage(m: AppModel, s: JSONObject) {
 private fun SubscriptionsPage(m: AppModel, s: JSONObject) {
     Page(m, L.t("Подписки", "Subscriptions")) {
         section(L.t("Обновление", "Updates")) {
-            SwitchRow(L.t("Обновлять автоматически", "Update automatically"), L.t("Фоновая проверка раз в час", "Background check every hour"), Ic.Refresh, s.optBoolean("autoUpdate", true)) { m.setting("autoUpdate", it) }
+            SwitchRow(L.t("Обновлять автоматически", "Update automatically"), null, Ic.Refresh, s.optBoolean("autoUpdate", true)) { m.setting("autoUpdate", it) }
             Divider()
             val interval = s.optInt("updateInterval", 0)
             SettingRow(L.t("Интервал", "Interval"), if (interval <= 0) L.t("как задал провайдер", "as set by the provider") else "$interval " + L.t("ч", "h"), Ic.Clock) { m.number(L.t("Часы, 0 — как у провайдера", "Hours, 0 — as the provider says"), "updateInterval", interval, 0, 730) }
             Divider()
-            SwitchRow(L.t("Обновлять при открытии", "Update on open"), L.t("Если подошёл интервал", "If the interval has passed"), Ic.Sparkle, s.optBoolean("updateOnOpen")) { m.setting("updateOnOpen", it) }
+            SwitchRow(L.t("Обновлять при открытии", "Update on open"), null, Ic.Sparkle, s.optBoolean("updateOnOpen", true)) { m.setting("updateOnOpen", it) }
             Divider()
             SwitchRow(L.t("Пинг при открытии", "Ping on open"), null, Ic.Pulse, s.optBoolean("pingOnOpen")) { m.setting("pingOnOpen", it) }
             Divider()
@@ -410,7 +395,7 @@ private fun SubscriptionsPage(m: AppModel, s: JSONObject) {
             }
         }
         section(L.t("Что получает провайдер", "What the provider receives")) {
-            SwitchRow(L.t("Передавать HWID", "Send HWID"), L.t("Случайный ID установки, модель и версия Android — для лимита устройств", "Random install ID, device model and Android version — for device limits"), Ic.Phone, s.optBoolean("sendHwid", true)) { m.setting("sendHwid", it) }
+            SwitchRow(L.t("Передавать HWID", "Send HWID"), null, Ic.Phone, s.optBoolean("sendHwid", true)) { m.setting("sendHwid", it) }
             Divider()
             SettingRow(L.t("Время ожидания", "Timeout"), s.optInt("subTimeout", 10).toString() + L.t(" с", " s"), Ic.Clock) { m.number(L.t("Секунды", "Seconds"), "subTimeout", s.optInt("subTimeout", 10), 5, 15) }
             Divider()
@@ -424,7 +409,7 @@ private fun SubscriptionsPage(m: AppModel, s: JSONObject) {
 @Composable
 private fun PingPage(m: AppModel, s: JSONObject) {
     val type = s.optString("pingType", "proxyGet")
-    Page(m, L.t("Проверка задержки", "Latency check")) {
+    Page(m, L.t("Пинг", "Ping")) {
         section(L.t("Способ", "Method")) {
             SettingRow(L.t("Как измерять", "How to measure"), Ping.label(type), Ic.Pulse) {
                 m.pick(L.t("Способ проверки", "Test method"), listOf(L.t("Proxy GET · реальный запрос через сервер", "Proxy GET · a real request through the server"), L.t("Proxy HEAD · без тела ответа", "Proxy HEAD · without a body"), L.t("TCP · подключение к порту", "TCP · connect to the port"), "ICMP · ping"), listOf("proxyGet", "proxyHead", "tcp", "icmp"), "pingType", type)
@@ -445,14 +430,6 @@ private fun PingPage(m: AppModel, s: JSONObject) {
             Divider()
             SettingRow(L.t("Тайм-аут", "Timeout"), s.optInt("pingTimeout", 5000).toString() + L.t(" мс", " ms")) { m.number(L.t("Тайм-аут, мс", "Timeout, ms"), "pingTimeout", s.optInt("pingTimeout", 5000), 1000, 30000) }
         }
-        item {
-            Text(when {
-                type.startsWith("proxy") -> L.t("Запрос идёт через временное ядро Xray, VPN включать не нужно. Показывается лучший из двух результатов.", "The request goes through a temporary Xray core; the VPN need not be on. The better of two results is shown.")
-                type == "tcp" -> L.t("TCP проверяет только, открыт ли порт. Для Hysteria2 и WireGuard автоматически используется запрос через сервер.", "TCP only checks that the port is open. Hysteria2 and WireGuard automatically use a request through the server.")
-                else -> L.t("ICMP может блокироваться сетью или оператором.", "ICMP may be blocked by the network or carrier.")
-            } + L.t(" При включённом VPN проверка идёт мимо туннеля, напрямую к серверу.", " With the VPN on, the check bypasses the tunnel and goes straight to the server."),
-                Modifier.padding(horizontal = 24.dp, vertical = 12.dp), color = W.muted, style = MaterialTheme.typography.bodySmall)
-        }
     }
 }
 
@@ -463,10 +440,10 @@ private fun AppearancePage(m: AppModel, s: JSONObject) {
     var dim by remember { mutableFloatStateOf(s.optDouble("bgDim", 0.35).toFloat()) }
     Page(m, L.t("Оформление", "Appearance")) {
         section(L.t("Фон", "Background")) {
-            SettingRow(if (m.photo == null) L.t("Поставить своё фото", "Use your own photo") else L.t("Сменить фото", "Change the photo"), L.t("Хранится только в приложении", "Kept inside the app only"), Ic.Image) { m.host?.pickPhoto() }
+            SettingRow(if (m.photo == null) L.t("Поставить своё фото", "Use your own photo") else L.t("Сменить фото", "Change the photo"), null, Ic.Image) { m.host?.pickPhoto() }
             if (m.photo != null) {
                 Divider()
-                SettingRow(L.t("Убрать фото", "Remove the photo"), L.t("Вернуть живой градиент", "Back to the live gradient"), Ic.Delete, danger = true) { m.removePhoto() }
+                SettingRow(L.t("Убрать фото", "Remove the photo"), null, Ic.Delete, danger = true) { m.removePhoto() }
                 Divider()
                 Column(Modifier.padding(horizontal = 20.dp, vertical = 12.dp)) {
                     Text(L.t("Размытие", "Blur") + if (Build.VERSION.SDK_INT < 31) L.t(" (Android 12+)", " (Android 12+)") else "", color = W.text)
@@ -478,7 +455,7 @@ private fun AppearancePage(m: AppModel, s: JSONObject) {
         }
         item {
             SectionTitle(L.t("Акцент", "Accent"))
-            val current = s.optString("accent", "sakura")
+            val current = s.optString("accent", "system")
             val options = buildList {
                 addAll(ACCENTS.keys)
                 if (m.photoAccent != null) add("photo")
@@ -502,9 +479,9 @@ private fun AppearancePage(m: AppModel, s: JSONObject) {
                 m.input = Input(L.t("Имя в приветствии", "Name in the greeting"), s.optString("greetName")) { v -> m.store.setting("greetName", v.trim().take(24)) }
             }
             Divider()
-            SwitchRow(L.t("Внешний IP и задержка", "Exit IP and delay"), L.t("Раз в минуту, через туннель (cloudflare.com/cdn-cgi/trace)", "Once a minute, through the tunnel (cloudflare.com/cdn-cgi/trace)"), Ic.Globe, s.optBoolean("showExitIp", true)) { m.setting("showExitIp", it) }
+            SwitchRow(L.t("Показывать IP и пинг", "Show IP and ping"), null, Ic.Globe, s.optBoolean("showExitIp", true)) { m.setting("showExitIp", it) }
             Divider()
-            SwitchRow(L.t("Чёрный фон (AMOLED)", "Pure black (AMOLED)"), L.t("Когда нет своего фото", "When there is no photo"), Ic.Eye, s.optBoolean("amoled")) { m.setting("amoled", it) }
+            SwitchRow(L.t("Чёрный фон (AMOLED)", "Pure black (AMOLED)"), null, Ic.Eye, s.optBoolean("amoled")) { m.setting("amoled", it) }
         }
     }
 }

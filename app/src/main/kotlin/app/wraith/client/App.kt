@@ -199,17 +199,22 @@ object ExitInfo {
 
     fun fetch(settings: JSONObject): Info {
         var ip = ""; var country = ""
-        try {
-            val c = URL("https://www.cloudflare.com/cdn-cgi/trace").openConnection() as HttpURLConnection
-            c.connectTimeout = 6000; c.readTimeout = 6000; c.useCaches = false
-            c.setRequestProperty("User-Agent", "Wraith/${WraithApp.VERSION}")
+        // The IPv4 address first (1.1.1.1 is only reachable over IPv4): a server with IPv6 would otherwise
+        // show its IPv6 exit. The name-based endpoint is the fallback for servers without IPv4.
+        for (url in listOf("https://1.1.1.1/cdn-cgi/trace", "https://www.cloudflare.com/cdn-cgi/trace")) {
             try {
-                for (line in String(c.inputStream.bounded(16 * 1024)).lines()) {
-                    if (line.startsWith("ip=")) ip = line.substring(3).trim()
-                    if (line.startsWith("loc=")) country = line.substring(4).trim().lowercase()
-                }
-            } finally { c.disconnect() }
-        } catch (_: Exception) {}
+                val c = URL(url).openConnection() as HttpURLConnection
+                c.connectTimeout = 6000; c.readTimeout = 6000; c.useCaches = false
+                c.setRequestProperty("User-Agent", "Wraith/${WraithApp.VERSION}")
+                try {
+                    for (line in String(c.inputStream.bounded(16 * 1024)).lines()) {
+                        if (line.startsWith("ip=")) ip = line.substring(3).trim()
+                        if (line.startsWith("loc=")) country = line.substring(4).trim().lowercase()
+                    }
+                } finally { c.disconnect() }
+            } catch (_: Exception) {}
+            if (ip.isNotEmpty()) break
+        }
         return Info(ip, country, delay(settings), SystemClock.elapsedRealtime())
     }
 

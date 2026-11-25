@@ -185,7 +185,7 @@ class XrayVpnService : VpnService() {
             setState(TunnelStatus(Tunnel.CONNECTING, profileName = name))
             val settings = snapshot.child("settings")
             DnsChoice.inject(this, settings)
-            notifySpeed = settings.optBoolean("notifySpeed")
+            notifySpeed = settings.optBoolean("notifySpeed", true)
             val dns = XrayRuntimeConfig.androidDns(snapshot, selected, settings)
             val geodata = XrayAssets.ensure(this)
             val core = IsolatedXray(this).also { xray = it }

@@ -173,10 +173,22 @@ class AppModel(app: Application) : AndroidViewModel(app) {
 
     // ---- tunnel ----------------------------------------------------------------------------------
 
+    /** Last update time seen per subscription: a refresh (from anywhere) drops that group's ping results. */
+    private val seenUpdates = HashMap<String, Long>()
+
+    private fun dropRefreshedPings() {
+        for (sub in store.subscriptions()) {
+            val id = sub.optString("id"); val updated = sub.optLong("updated")
+            val before = seenUpdates.put(id, updated)
+            if (before != null && before != updated) store.profiles().filter { it.optString("group") == id }.forEach { pingResults.remove(it.optString("id")) }
+        }
+    }
+
     private suspend fun ticker() {
         var exitDue = 0L
         while (viewModelScope.isActive) {
             CoreRouter.verify(ctx)
+            dropRefreshedPings()
             val s = Tunnel.status.value
             now = SystemClock.elapsedRealtime()
             if ((watched == Tunnel.CONNECTING || watched == Tunnel.CONNECTED) && s.state == Tunnel.OFF && s.error.isNotEmpty() && s.error != shownError) {
@@ -243,7 +255,7 @@ class AppModel(app: Application) : AndroidViewModel(app) {
             try { val r = withContext(Dispatchers.IO) { UpdateChecker.check() }; if (r.available) update = r } catch (_: Exception) {}
         }
         if (s.optBoolean("connectOnOpen") && Tunnel.status.value.state == Tunnel.OFF && store.selected() != null) toggleConnection()
-        val updateSubs = s.optBoolean("updateOnOpen", false); val ping = s.optBoolean("pingOnOpen")
+        val updateSubs = s.optBoolean("updateOnOpen", true); val ping = s.optBoolean("pingOnOpen")
         if (updateSubs || ping) viewModelScope.launch {
             if (updateSubs) withContext(Dispatchers.IO) { Subscriptions.updateAll(ctx, true) }
             if (ping) pingAll()
@@ -368,7 +380,7 @@ class AppModel(app: Application) : AndroidViewModel(app) {
         L.t("Фон обновлён", "Background updated")
     }
 
-    fun removePhoto() { photoFile().delete(); photo = null; photoAccent = null; if (store.settings().optString("accent") == "photo") setting("accent", "sakura") }
+    fun removePhoto() { photoFile().delete(); photo = null; photoAccent = null; if (store.settings().optString("accent") == "photo") setting("accent", "system") }
 
     // ---- updates ---------------------------------------------------------------------------------
 

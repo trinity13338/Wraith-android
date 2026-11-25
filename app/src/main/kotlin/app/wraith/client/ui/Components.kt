@@ -101,7 +101,7 @@ fun GlassColumn(modifier: Modifier = Modifier, shape: Shape = RoundedCornerShape
 @Composable
 fun Chip(text: String, icon: ImageVector? = null, dot: Color? = null, pulse: Boolean = false, tint: Color = W.text, modifier: Modifier = Modifier) {
     Row(modifier.clip(RoundedCornerShape(14.dp)).background(W.glass).border(1.dp, W.stroke, RoundedCornerShape(14.dp)).padding(horizontal = 12.dp, vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically) {
+        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
         if (dot != null) {
             val t = rememberInfiniteTransition(label = "dot")
             val a by t.animateFloat(1f, if (pulse) 0.25f else 1f, infiniteRepeatable(tween(900, easing = FastOutSlowInEasing), RepeatMode.Reverse), label = "a")

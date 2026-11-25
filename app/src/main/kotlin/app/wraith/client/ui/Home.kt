@@ -45,11 +45,22 @@ import app.wraith.client.formatBytes
 import app.wraith.client.formatDuration
 import java.util.Calendar
 
-fun greeting(): String = when (Calendar.getInstance().get(Calendar.HOUR_OF_DAY)) {
-    in 5..11 -> L.t("Доброе утро", "Good morning")
-    in 12..17 -> L.t("Добрый день", "Good afternoon")
-    in 18..22 -> L.t("Добрый вечер", "Good evening")
-    else -> L.t("Доброй ночи", "Good night")
+private val PHRASES = listOf(
+    "Тихо и незаметно" to "Quiet and unseen", "Призрак на связи" to "The ghost is online", "Сеть без границ" to "A web without borders",
+    "Невидимка в деле" to "Invisible at work", "Свои пути" to "Your own roads", "Мимо фильтров" to "Past the filters",
+    "Тень в сети" to "A shadow on the net", "Без следа" to "Without a trace", "Туннель готов" to "The tunnel is ready",
+    "Дорога открыта" to "The road is open", "Ни одного лишнего глаза" to "No prying eyes", "Сквозь стены" to "Through the walls",
+    "Скорость и тишина" to "Speed and silence", "Шифр на месте" to "The cipher holds", "Лёгкий как дым" to "Light as smoke",
+    "Интернет как был" to "The internet as it was", "Сигнал чистый" to "The signal is clean", "Пакеты в пути" to "Packets on their way",
+    "Здесь никого нет" to "Nobody here", "Ночной режим сети" to "The net after dark", "Свобода по умолчанию" to "Freedom by default",
+    "Тише воды" to "Still waters", "Мир без замков" to "A world without locks", "Связь держится" to "The line holds",
+)
+
+/** A short line for the home screen; another one every 30 minutes (the same on every Wraith). */
+fun greeting(): String {
+    val step = System.currentTimeMillis() / 1000 / 1800
+    val i = ((step * -0x61c8864680b583ebL) ushr 32).rem(PHRASES.size.toLong()).toInt()
+    return L.t(PHRASES[i].first, PHRASES[i].second)
 }
 
 @Composable
@@ -85,12 +96,14 @@ fun HomeScreen(m: AppModel) {
             // Telemetry in a fixed grid: every cell has its own width, so changing numbers never reflow it.
             AnimatedVisibility(state == Tunnel.CONNECTED) {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    val shown = settings.optBoolean("showExitIp", true)
+                    val hidden = L.t("Скрыто", "Hidden")
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         Chip(formatDuration(((m.now - status.since) / 1000).coerceAtLeast(0)), Ic.Clock, modifier = Modifier.weight(1f))
-                        Chip(m.exit.ip.ifEmpty { "—" }, Ic.Globe, modifier = Modifier.weight(1.7f))
+                        Chip(if (!shown) hidden else m.exit.ip.ifEmpty { "—" }, Ic.Globe, tint = if (shown) W.text else W.muted, modifier = Modifier.weight(1.7f))
                     }
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Chip((if (m.exit.delay > 0) "${m.exit.delay}" else "—") + " " + L.t("мс", "ms"), tint = if (m.exit.delay > 0) latencyColor(m.exit.delay) else W.muted, modifier = Modifier.weight(0.7f))
+                        Chip(if (!shown) hidden else (if (m.exit.delay > 0) "${m.exit.delay}" else "—") + " " + L.t("мс", "ms"), tint = if (shown && m.exit.delay > 0) latencyColor(m.exit.delay) else W.muted, modifier = Modifier.weight(0.7f))
                         Chip("↓ " + formatBytes(status.rxRate) + L.t("/с", "/s"), modifier = Modifier.weight(1.15f))
                         Chip("↑ " + formatBytes(status.txRate) + L.t("/с", "/s"), modifier = Modifier.weight(1.15f))
                     }

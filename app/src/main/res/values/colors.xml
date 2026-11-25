@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Launcher icon: the app's dark base and default accent. Android 12+ uses the system palette (values-v31). -->
+    <color name="wraith_icon_bg">#0B0A10</color>
+    <color name="wraith_icon_fg">#F2A7D8</color>
+</resources>

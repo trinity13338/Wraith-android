@@ -113,7 +113,7 @@ fun ServersScreen(m: AppModel) {
             Text(L.t("Ничего не найдено", "Nothing found"), Modifier.fillMaxWidth().padding(32.dp), color = W.muted, textAlign = TextAlign.Center)
         }
         for (g in groups) {
-            val collapsed = m.collapsed[g.id] == true && q.isEmpty()
+            val collapsed = (g.sub?.optBoolean("collapsed") ?: (m.collapsed[g.id] == true)) && q.isEmpty()
             item(key = "group-" + g.id) { GroupHeader(m, g, collapsed) }
             if (!collapsed) items(g.members, key = { "p-" + it.optString("id") }) { p ->
                 ServerRow(m, p, p.optString("id") == selectedId)
@@ -159,7 +159,10 @@ private fun GroupHeader(m: AppModel, g: ServerGroup, collapsed: Boolean) {
     val sub = g.sub
     Column(Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 18.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Column(Modifier.weight(1f).clickable { m.collapsed[g.id] = !collapsed }.padding(start = 6.dp, end = 8.dp, top = 4.dp, bottom = 4.dp)) {
+            // The chevron folds the group; a subscription remembers it.
+            Icon(if (collapsed) Ic.Chevron else Ic.ChevronDown, if (collapsed) L.t("Развернуть", "Expand") else L.t("Свернуть", "Collapse"),
+                Modifier.size(34.dp).clip(CircleShape).clickable { toggleCollapsed(m, g, collapsed) }.padding(7.dp), tint = W.muted)
+            Column(Modifier.weight(1f).clickable { toggleCollapsed(m, g, collapsed) }.padding(start = 2.dp, end = 8.dp, top = 4.dp, bottom = 4.dp)) {
                 Text(g.title, color = W.text, style = MaterialTheme.typography.titleLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 val count = serversCount(g.members.size) + if (collapsed) L.t(" · свёрнуто", " · collapsed") else ""
                 val line = when {
@@ -244,8 +247,7 @@ private fun ServerRow(m: AppModel, p: JSONObject, selected: Boolean) {
         Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f)) {
             Text(PingInfo.displayName(name), color = W.text, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            val pool = p.optJSONArray("xrayCandidates")?.length() ?: 0
-            Text(p.optString("description").ifEmpty { Endpoint.label(p.optJSONObject("outbound")) } + (if (pool > 1) L.t(" · пул $pool", " · pool of $pool") else ""),
+            Text(p.optString("description").ifEmpty { Endpoint.label(p.optJSONObject("outbound")) },
                 color = W.muted, style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
         Spacer(Modifier.width(8.dp))
@@ -298,7 +300,6 @@ private fun diagnose(m: AppModel, p: JSONObject): String {
     val out = StringBuilder()
     val e = p.optJSONObject("outbound")
     out.append(L.t("Сервер: ", "Server: ")).append(Endpoint.label(e)).append(" · ").append(e?.optString("server")).append(':').append(e?.optInt("server_port")).append('\n')
-    p.optJSONArray("xrayCandidates")?.let { out.append(L.t("Серверов в пуле: ", "Servers in the pool: ")).append(it.length()).append('\n') }
     out.append(L.t("Маршрутизация: ", "Routing: ")).append(RoutingConfig.summary(m.store.snapshot(), p)).append('\n')
     val state = m.store.snapshot().put("profiles", jsonArrayOf(p)).put("selected", p.optString("id"))
     try {
@@ -335,3 +336,7 @@ private fun subscriptionSheet(m: AppModel, sub: JSONObject) {
 
 
 fun serversCount(n: Int): String = n.toString() + " " + if (L.en()) (if (n == 1) "server" else "servers") else L.plural(n.toLong(), "сервер", "сервера", "серверов")
+
+private fun toggleCollapsed(m: AppModel, g: ServerGroup, collapsed: Boolean) {
+    if (g.sub != null) m.store.updateSubscription(g.id) { it.put("collapsed", !collapsed) } else m.collapsed[g.id] = !collapsed
+}
