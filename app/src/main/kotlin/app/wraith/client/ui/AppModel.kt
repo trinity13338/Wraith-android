@@ -126,6 +126,9 @@ class AppModel(app: Application) : AndroidViewModel(app) {
 
     private var watched = Tunnel.OFF
     private var shownError = ""
+    /** Last update time seen per subscription: a refresh (from anywhere) drops that group's ping results.
+     *  Declared before the init block below: the ticker it starts runs at once (Main.immediate). */
+    private val seenUpdates = HashMap<String, Long>()
 
     init {
         if (storeOrNull != null) {
@@ -172,9 +175,6 @@ class AppModel(app: Application) : AndroidViewModel(app) {
     }
 
     // ---- tunnel ----------------------------------------------------------------------------------
-
-    /** Last update time seen per subscription: a refresh (from anywhere) drops that group's ping results. */
-    private val seenUpdates = HashMap<String, Long>()
 
     private fun dropRefreshedPings() {
         for (sub in store.subscriptions()) {
