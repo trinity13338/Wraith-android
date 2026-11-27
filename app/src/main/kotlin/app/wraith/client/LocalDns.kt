@@ -1,9 +1,11 @@
 package app.wraith.client
 
 import android.content.Context
+import android.net.ConnectivityManager
 import android.net.DnsResolver
 import android.os.Build
 import android.os.CancellationSignal
+import android.os.SystemClock
 import android.util.Log
 import java.io.DataInputStream
 import java.io.DataOutputStream
@@ -16,16 +18,22 @@ import java.net.Socket
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
+import javax.net.ssl.HttpsURLConnection
+import javax.net.ssl.SSLSocket
+import javax.net.ssl.SSLSocketFactory
 
 /**
- * A DNS endpoint on loopback for the Go core (libXray's SetDNS needs an ip:port). Every query is
- * answered by Android's own resolver on the phone's physical network, so it follows the phone's
- * DNS settings, Private DNS included, and Wraith never asks a hard-coded public resolver.
+ * A DNS endpoint on loopback for the Go core (libXray's SetDNS needs an ip:port) and Xray's DNS module.
+ * With a Private DNS host set on the phone, every query goes to Android's own resolver on the physical
+ * network, i.e. only to that host. Without it, queries go over DNS-over-TLS to 1.1.1.1 (1.0.0.1 as the
+ * second address); only if both fail does the network's own resolver answer.
  */
 class LocalDns private constructor(private val context: Context, private val udp: DatagramSocket, private val tcp: ServerSocket) {
     val endpoint: String get() = "127.0.0.1:${udp.localPort}"
     private val pool = Executors.newCachedThreadPool { r -> Thread(r, "wraith-dns").apply { isDaemon = true } }
     @Volatile private var closed = false
+    /** Open DoT connections, reused for a short while: (socket, when it was last used). */
+    private val idle = java.util.ArrayDeque<Pair<SSLSocket, Long>>()
 
     private fun start(): LocalDns {
         pool.execute {
@@ -62,12 +70,61 @@ class LocalDns private constructor(private val context: Context, private val udp
         closed = true
         try { udp.close() } catch (_: Exception) {}
         try { tcp.close() } catch (_: Exception) {}
+        synchronized(idle) { idle.forEach { try { it.first.close() } catch (_: Exception) {} }; idle.clear() }
         pool.shutdownNow()
     }
 
     private fun answer(query: ByteArray): ByteArray? {
         if (query.size < 12) return null
         val network = Networks.physical(context) ?: return failure(query)
+        if (!privateDns(network)) {
+            for (server in DOT_SERVERS) try { return dot(network, server, query) } catch (e: Exception) { Log.w(TAG, "DoT $server", e) }
+        }
+        return system(network, query)
+    }
+
+    /** A Private DNS host is set for this network («Частный DNS-сервер: имя хоста»). */
+    private fun privateDns(network: android.net.Network): Boolean {
+        if (Build.VERSION.SDK_INT < 28) return false
+        val cm = context.getSystemService(ConnectivityManager::class.java) ?: return false
+        return !cm.getLinkProperties(network)?.privateDnsServerName.isNullOrEmpty()
+    }
+
+    /** One query over DNS-over-TLS (RFC 7858), on a reused connection when one is fresh. */
+    private fun dot(network: android.net.Network, server: String, query: ByteArray): ByteArray {
+        while (true) {
+            val now = SystemClock.elapsedRealtime()
+            val reused = synchronized(idle) {
+                var c = idle.pollLast()
+                while (c != null && now - c.second > IDLE_MS) { try { c.first.close() } catch (_: Exception) {}; c = idle.pollLast() }
+                c?.first
+            }
+            val s = reused ?: openDot(network, server)
+            try {
+                val out = DataOutputStream(s.outputStream); out.writeShort(query.size); out.write(query); out.flush()
+                val input = DataInputStream(s.inputStream); val answer = ByteArray(input.readUnsignedShort()); input.readFully(answer)
+                synchronized(idle) { if (!closed && idle.size < 4) idle.addLast(s to SystemClock.elapsedRealtime()) else s.close() }
+                return answer
+            } catch (e: java.io.IOException) {
+                try { s.close() } catch (_: Exception) {}
+                if (reused == null) throw e // a fresh connection failed; a stale reused one is simply replaced
+            }
+        }
+    }
+
+    private fun openDot(network: android.net.Network, server: String): SSLSocket {
+        val raw = network.socketFactory.createSocket()
+        try {
+            raw.connect(InetSocketAddress(InetAddress.getByName(server), 853), 5000)
+            val s = (SSLSocketFactory.getDefault() as SSLSocketFactory).createSocket(raw, DOT_NAME, 853, true) as SSLSocket
+            s.soTimeout = 5000; s.startHandshake()
+            if (!HttpsURLConnection.getDefaultHostnameVerifier().verify(DOT_NAME, s.session)) { s.close(); throw javax.net.ssl.SSLPeerUnverifiedException(DOT_NAME) }
+            return s
+        } catch (e: Exception) { try { raw.close() } catch (_: Exception) {}; throw e }
+    }
+
+    /** Android's own resolver on the physical network (Private DNS when set, otherwise the network's DNS). */
+    private fun system(network: android.net.Network, query: ByteArray): ByteArray {
         return try {
             if (Build.VERSION.SDK_INT >= 29) {
                 val result = CompletableFuture<ByteArray>()
@@ -93,6 +150,9 @@ class LocalDns private constructor(private val context: Context, private val udp
         private const val TAG = "WraithDns"
         /** Settings key the tunnel puts the endpoint under while building the core configuration. */
         const val KEY = "_localDns"
+        private val DOT_SERVERS = listOf("1.1.1.1", "1.0.0.1")
+        private const val DOT_NAME = "cloudflare-dns.com"
+        private const val IDLE_MS = 20_000L
         /** What Go's resolver reads over UDP; anything longer is answered with the truncation bit set. */
         private const val UDP_LIMIT = 1232
 

@@ -229,7 +229,7 @@ fun Backdrop(photo: ImageBitmap?, blur: Float, dim: Float, state: Int) {
 /**
  * The connect control: a wide pill. Off it says what it does. On, packets run through it in two
  * lanes: upload to the right on top, download to the left below, each lane as fast as its
- * traffic. While connecting the packets dash quickly and blink, as if knocking.
+ * traffic. While connecting (and disconnecting) a Material 3 wavy progress indicator runs across it.
  */
 @Composable
 fun ConnectButton(state: Int, enabled: Boolean, rxRate: Long, txRate: Long, modifier: Modifier = Modifier, onClick: () -> Unit) {
@@ -247,15 +247,19 @@ fun ConnectButton(state: Int, enabled: Boolean, rxRate: Long, txRate: Long, modi
     val downSpeed by animateFloatAsState(laneSpeed(rxRate), tween(900), label = "down")
     var upOffset by remember { mutableFloatStateOf(0f) }
     var downOffset by remember { mutableFloatStateOf(0f) }
+    var wavePhase by remember { mutableFloatStateOf(0f) }
     if (on || busy || presence > 0f) LaunchedEffect(Unit) {
         var last = 0L
         while (true) withFrameNanos { now ->
-            if (last != 0L) { val dt = (now - last) / 1e9f; upOffset += upSpeed * dt; downOffset += downSpeed * dt }
+            if (last != 0L) { val dt = (now - last) / 1e9f; upOffset += upSpeed * dt; downOffset += downSpeed * dt; wavePhase += dt * 2f * Math.PI.toFloat() * 1.1f }
             last = now
         }
     }
-    val t = rememberInfiniteTransition(label = "blink")
-    val blink by t.animateFloat(0.45f, 1f, infiniteRepeatable(tween(420, easing = FastOutSlowInEasing), RepeatMode.Reverse), label = "blink")
+    // Waves while connecting, packet lanes once connected; they cross-fade.
+    val waveMix by animateFloatAsState(if (busy) 1f else 0f, tween(450), label = "wave")
+    val laneMix by animateFloatAsState(if (on) 1f else 0f, tween(450), label = "lanes")
+    val t = rememberInfiniteTransition(label = "sweep")
+    val sweep by t.animateFloat(0f, 1f, infiniteRepeatable(tween(1500, easing = LinearEasing)), label = "sweep")
     Box(
         modifier.fillMaxWidth().height(80.dp).scale(scale).clip(CircleShape).background(fill)
             .border(1.dp, if (on || busy) Color.Transparent else W.stroke, CircleShape)
@@ -294,11 +298,45 @@ fun ConnectButton(state: Int, enabled: Boolean, rxRate: Long, txRate: Long, modi
                     start += strip
                 }
             }
-            val a = if (busy) blink else 1f
-            lane(size.height / 2 - 9.dp.toPx(), upOffset, true, a * 0.75f, 0)
-            lane(size.height / 2 + 9.dp.toPx(), downOffset, false, a, 3)
+            val lanes = laneMix
+            if (lanes > 0.01f) {
+                lane(size.height / 2 - 9.dp.toPx(), upOffset, true, 0.75f * lanes, 0)
+                lane(size.height / 2 + 9.dp.toPx(), downOffset, false, lanes, 3)
+            }
+            if (waveMix > 0.01f) {
+                // Material 3 wavy indeterminate indicator: a flat track and wavy active stretches that sweep
+                // across (the head leads, the tail catches up), kept apart from the track by a gap. Two
+                // stretches half a cycle apart, so one is always on its way.
+                val k = waveMix * presence
+                val cy = size.height / 2; val stroke = 5.dp.toPx(); val amp = 3.5.dp.toPx(); val wave = 26.dp.toPx(); val gapPx = 6.dp.toPx()
+                val w = size.width
+                val parts = listOf(0f, 0.5f).map { shift ->
+                    val p = (sweep + shift) % 1f
+                    val head = (-0.06f + 1.12f * (1f - (1f - p) * (1f - p))) * w
+                    val tail = (-0.06f + 1.12f * p * p) * w
+                    tail.coerceIn(0f, w) to head.coerceIn(0f, w)
+                }.filter { it.second - it.first > 1f }.sortedBy { it.first }
+                val track = ink.copy(alpha = 0.22f * k)
+                var free = 0f
+                fun flat(a: Float, b: Float) { if (b - a > stroke) drawLine(track, Offset(a + stroke / 2, cy), Offset(b - stroke / 2, cy), stroke, StrokeCap.Round) }
+                for ((from, to) in parts) { flat(free, from - gapPx); free = maxOf(free, to + gapPx) }
+                flat(free, w)
+                for ((tail, head) in parts) {
+                    val from = tail.coerceAtLeast(stroke / 2); val to = head.coerceAtMost(w - stroke / 2)
+                    if (to - from < 1f) continue
+                    val path = androidx.compose.ui.graphics.Path()
+                    var x = from; var first = true
+                    while (true) {
+                        val y = cy + amp * kotlin.math.sin(x / wave * 2f * Math.PI.toFloat() - wavePhase)
+                        if (first) { path.moveTo(x, y); first = false } else path.lineTo(x, y)
+                        if (x >= to) break
+                        x = minOf(to, x + 2f)
+                    }
+                    drawPath(path, ink.copy(alpha = k), style = androidx.compose.ui.graphics.drawscope.Stroke(stroke, cap = StrokeCap.Round, join = androidx.compose.ui.graphics.StrokeJoin.Round))
+                }
+            }
         }
-        AnimatedVisibility(presence < 0.3f, enter = fadeIn(), exit = fadeOut()) {
+        AnimatedVisibility(!on && !busy, enter = fadeIn(tween(300, 200)), exit = fadeOut(tween(120))) {
             androidx.compose.foundation.layout.Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(Ic.Power, null, Modifier.size(24.dp), tint = W.accent)
                 Spacer(Modifier.width(12.dp))

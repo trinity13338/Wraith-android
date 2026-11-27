@@ -30,7 +30,7 @@ object XrayRuntimeConfig {
         root.put("inbounds", inbounds(settings))
         if (clientInlets.isNotEmpty()) remapInboundRules(root, clientInlets)
         val tags = ensureAppOutbounds(root, profile)
-        val dnsTag = ensureDnsOutbound(root)
+        val dnsTag = ensureDnsOutbound(root, settings)
         val routing = root.child("routing")
         if (!routing.has("domainStrategy")) routing.put("domainStrategy", "IPIfNonMatch")
         var rules = routing.childArray("rules")
@@ -252,11 +252,15 @@ object XrayRuntimeConfig {
         return a
     }
 
-    private fun ensureDnsOutbound(root: JSONObject): String {
+    private fun ensureDnsOutbound(root: JSONObject, settings: JSONObject): String {
         val outbounds = root.getJSONArray("outbounds")
         outbounds.objects().firstOrNull { it.optString("protocol") == "dns" }?.let { o -> return o.optString("tag").ifEmpty { "wraith-dns".also { o.put("tag", it) } } }
         val tag = uniqueTag(outbounds, "wraith-dns")
-        outbounds.put(jsonOf("protocol" to "dns", "tag" to tag, "settings" to jsonOf("nonIPQuery" to "skip")))
+        val dns = jsonOf("nonIPQuery" to "skip")
+        // Queries other than A/AAAA are forwarded as they are; they go to LocalDns too, never in the clear
+        // to the network's resolver.
+        settings.optString(LocalDns.KEY).substringAfterLast(':').toIntOrNull()?.let { dns.put("network", "tcp").put("address", "127.0.0.1").put("port", it) }
+        outbounds.put(jsonOf("protocol" to "dns", "tag" to tag, "settings" to dns))
         return tag
     }
 
@@ -299,7 +303,7 @@ object XrayRuntimeConfig {
     private fun dnsHost(value: String): String = try { val s = value.trim(); if (isIpLiteral(s)) s else if ("://" in s) URI.create(s).host.orEmpty() else s } catch (_: Exception) { "" }
 
     /** Provider DNS (with «DNS из JSON»), else the user's own DNS, else the phone's resolver through
-     *  LocalDns (Android's own resolver, so Private DNS applies). */
+     *  LocalDns (the Private DNS host when set, otherwise DNS-over-TLS to 1.1.1.1). */
     private fun dns(p: JSONObject, s: JSONObject): JSONObject {
         var value = if (s.optBoolean("dnsFromJson", false)) RoutingConfig.dnsAddress(p.optJSONObject("routing"), "Remote") else ""
         if (value.isEmpty()) value = DnsChoice.custom(s)

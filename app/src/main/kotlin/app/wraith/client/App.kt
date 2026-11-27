@@ -197,19 +197,27 @@ object Flags {
 object ExitInfo {
     data class Info(val ip: String = "", val country: String = "", val delay: Int = -1, val checked: Long = 0)
 
-    fun fetch(settings: JSONObject): Info {
+    /** The delay is measured every time; the address only when [previous] is null (every 10 minutes). */
+    fun fetch(settings: JSONObject, previous: Info? = null): Info {
+        if (previous != null) return previous.copy(delay = delay(settings), checked = SystemClock.elapsedRealtime())
         var ip = ""; var country = ""
-        // api.2ip.io has only an IPv4 address, so a server with IPv6 still shows its IPv4 exit.
-        try {
-            val c = URL("https://api.2ip.io/").openConnection() as HttpURLConnection
-            c.connectTimeout = 6000; c.readTimeout = 6000; c.useCaches = false; c.instanceFollowRedirects = false
-            c.setRequestProperty("User-Agent", "Wraith/${WraithApp.VERSION}"); c.setRequestProperty("Accept", "application/json")
-            c.setRequestProperty("Connection", "close")
+        // The IPv4 address first (1.1.1.1 is only reachable over IPv4): a server with IPv6 would otherwise
+        // show its IPv6 exit. The name-based endpoint is the fallback for servers without IPv4. This is an
+        // HTTPS request to an address, through the tunnel; nothing is resolved by 1.1.1.1.
+        for (url in listOf("https://1.1.1.1/cdn-cgi/trace", "https://www.cloudflare.com/cdn-cgi/trace")) {
             try {
-                val o = JSONObject(String(c.inputStream.bounded(16 * 1024)))
-                ip = o.optString("ip").trim(); country = o.optString("code").trim().lowercase()
-            } finally { c.disconnect() }
-        } catch (_: Exception) {}
+                val c = URL(url).openConnection() as HttpURLConnection
+                c.connectTimeout = 6000; c.readTimeout = 6000; c.useCaches = false; c.instanceFollowRedirects = false
+                c.setRequestProperty("User-Agent", "Wraith/${WraithApp.VERSION}"); c.setRequestProperty("Connection", "close")
+                try {
+                    for (line in String(c.inputStream.bounded(16 * 1024)).lines()) {
+                        if (line.startsWith("ip=")) ip = line.substring(3).trim()
+                        if (line.startsWith("loc=")) country = line.substring(4).trim().lowercase()
+                    }
+                } finally { c.disconnect() }
+            } catch (_: Exception) {}
+            if (ip.isNotEmpty()) break
+        }
         return Info(ip, country, delay(settings), SystemClock.elapsedRealtime())
     }
 

@@ -185,7 +185,7 @@ class AppModel(app: Application) : AndroidViewModel(app) {
     }
 
     private suspend fun ticker() {
-        var exitDue = 0L
+        var exitDue = 0L; var ipDue = 0L
         while (viewModelScope.isActive) {
             CoreRouter.verify(ctx)
             dropRefreshedPings()
@@ -197,11 +197,14 @@ class AppModel(app: Application) : AndroidViewModel(app) {
             if (s.state == Tunnel.CONNECTED) {
                 speed += s.rxRate to s.txRate
                 while (speed.size > 60) speed.removeAt(0)
-                if (watched != Tunnel.CONNECTED) { exitDue = now + 1500; exit = ExitInfo.Info() }
+                if (watched != Tunnel.CONNECTED) { exitDue = now + 1500; ipDue = exitDue; exit = ExitInfo.Info() }
                 if (now >= exitDue && store.settings().optBoolean("showExitIp", true)) {
+                    // The delay every minute; the exit address every 10 minutes (again in a minute if it failed).
                     exitDue = now + 60_000
-                    val settings = store.settings()
-                    viewModelScope.launch { exit = withContext(Dispatchers.IO) { ExitInfo.fetch(settings) } }
+                    val needIp = now >= ipDue || exit.ip.isEmpty()
+                    if (needIp) ipDue = now + 600_000
+                    val settings = store.settings(); val previous = exit.takeIf { !needIp }
+                    viewModelScope.launch { exit = withContext(Dispatchers.IO) { ExitInfo.fetch(settings, previous) } }
                 }
             } else if (watched == Tunnel.CONNECTED) { speed.clear(); exit = ExitInfo.Info() }
             watched = s.state
