@@ -139,6 +139,7 @@ class XrayVpnService : VpnService() {
     @Volatile private var current = TunnelStatus()
     private var tun: ParcelFileDescriptor? = null
     private var xray: IsolatedXray? = null
+    private var localDns: LocalDns? = null
     @Volatile private var notifySpeed = false
     private var baseRx = 0L; private var baseTx = 0L; private var lastRx = 0L; private var lastTx = 0L
 
@@ -189,7 +190,10 @@ class XrayVpnService : VpnService() {
             val dns = XrayRuntimeConfig.androidDns(snapshot, selected, settings)
             val geodata = XrayAssets.ensure(this)
             val core = IsolatedXray(this).also { xray = it }
-            core.setDNS(XrayRuntimeConfig.dnsEndpoint(dns))
+            // The core resolves server names through Android's resolver (Private DNS included).
+            val local = localDns ?: LocalDns.open(this).also { localDns = it }
+            core.setDNS(local.endpoint)
+            settings.put(LocalDns.KEY, local.endpoint)
             // The configuration is built before the TUN exists: a broken profile must not leave
             // the phone with a VPN interface that blackholes every app.
             XrayRuntimeConfig.build(snapshot, selected, 0, core)
@@ -250,6 +254,7 @@ class XrayVpnService : VpnService() {
         val core = xray
         try { core?.invoke(jsonOf("apiVersion" to 3, "method" to "stopXray", "payload" to JSONObject()).toString()) } catch (_: Throwable) {}
         core?.resetDNS(); xray = null
+        localDns?.close(); localDns = null
         try { tun?.close() } catch (_: IOException) {}
         tun = null
         flushTraffic()

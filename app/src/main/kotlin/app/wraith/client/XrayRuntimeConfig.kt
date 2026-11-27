@@ -8,7 +8,8 @@ import java.util.Locale
 
 /** Builds the native Xray JSON for the tunnel while keeping provider configuration verbatim. */
 object XrayRuntimeConfig {
-    const val DNS_IP = "1.1.1.1"
+    /** Announced to Android when the network has no usable DNS: every port-53 query is hijacked anyway. */
+    const val DNS_IP = "172.19.0.2"
     const val AUTO_BALANCER = "wraith-auto"
     private val LOCAL = setOf("freedom", "blackhole", "dns", "loopback")
 
@@ -36,9 +37,6 @@ object XrayRuntimeConfig {
         // Observatory/balancers resolve their candidates without going through the balancer itself.
         val resolverIps = observatoryDnsIps(root)
         if (resolverIps.length() > 0) rules = insertRule(rules, 0, jsonOf("type" to "field", "ip" to resolverIps, "outboundTag" to tags.direct))
-        // The phone's own resolvers live in the local or carrier network and are queried directly.
-        if (!settings.optBoolean("dnsFromJson", false) && DnsChoice.custom(settings).isEmpty() && DnsChoice.system(settings).isNotEmpty())
-            rules = insertRule(rules, 0, jsonOf("type" to "field", "ip" to DnsChoice.system(settings).toJsonArray(), "port" to "53", "outboundTag" to tags.direct))
         var head = 0
         rules = insertRule(rules, head++, jsonOf("type" to "field", "inboundTag" to jsonArrayOf("tun-in"), "network" to "tcp,udp", "port" to "53", "outboundTag" to dnsTag))
         // «Обработка QUIC: reject»: browsers fall back to TCP, where fragmentation and mux apply.
@@ -298,21 +296,15 @@ object XrayRuntimeConfig {
         return DNS_IP
     }
 
-    fun dnsEndpoint(address: String?): String {
-        var v = address?.trim().orEmpty().ifEmpty { DNS_IP }
-        if (':' in v && !v.startsWith("[")) v = "[$v]"
-        return "$v:53"
-    }
-
     private fun dnsHost(value: String): String = try { val s = value.trim(); if (isIpLiteral(s)) s else if ("://" in s) URI.create(s).host.orEmpty() else s } catch (_: Exception) { "" }
 
-    /** Provider DNS (with «DNS из JSON»), else the user's own DNS, else the phone's resolvers. */
+    /** Provider DNS (with «DNS из JSON»), else the user's own DNS, else the phone's resolver through
+     *  LocalDns (Android's own resolver, so Private DNS applies). */
     private fun dns(p: JSONObject, s: JSONObject): JSONObject {
         var value = if (s.optBoolean("dnsFromJson", false)) RoutingConfig.dnsAddress(p.optJSONObject("routing"), "Remote") else ""
         if (value.isEmpty()) value = DnsChoice.custom(s)
         val servers = JSONArray()
-        if (value.isNotEmpty()) servers.put(value) else DnsChoice.system(s).forEach { servers.put(it) }
-        if (servers.length() == 0) servers.put(DnsChoice.DEFAULT_CUSTOM)
+        servers.put(value.ifEmpty { s.optString(LocalDns.KEY).takeIf { it.isNotEmpty() }?.let { "tcp+local://$it" } ?: "localhost" })
         val strategy = when (s.optString("ipPreference", "auto")) { "ipv4" -> "UseIPv4"; "ipv6" -> "UseIPv6"; else -> "UseIP" }
         return jsonOf("servers" to servers, "queryStrategy" to strategy)
     }

@@ -199,22 +199,17 @@ object ExitInfo {
 
     fun fetch(settings: JSONObject): Info {
         var ip = ""; var country = ""
-        // The IPv4 address first (1.1.1.1 is only reachable over IPv4): a server with IPv6 would otherwise
-        // show its IPv6 exit. The name-based endpoint is the fallback for servers without IPv4.
-        for (url in listOf("https://1.1.1.1/cdn-cgi/trace", "https://www.cloudflare.com/cdn-cgi/trace")) {
+        // api.2ip.io has only an IPv4 address, so a server with IPv6 still shows its IPv4 exit.
+        try {
+            val c = URL("https://api.2ip.io/").openConnection() as HttpURLConnection
+            c.connectTimeout = 6000; c.readTimeout = 6000; c.useCaches = false; c.instanceFollowRedirects = false
+            c.setRequestProperty("User-Agent", "Wraith/${WraithApp.VERSION}"); c.setRequestProperty("Accept", "application/json")
+            c.setRequestProperty("Connection", "close")
             try {
-                val c = URL(url).openConnection() as HttpURLConnection
-                c.connectTimeout = 6000; c.readTimeout = 6000; c.useCaches = false
-                c.setRequestProperty("User-Agent", "Wraith/${WraithApp.VERSION}")
-                try {
-                    for (line in String(c.inputStream.bounded(16 * 1024)).lines()) {
-                        if (line.startsWith("ip=")) ip = line.substring(3).trim()
-                        if (line.startsWith("loc=")) country = line.substring(4).trim().lowercase()
-                    }
-                } finally { c.disconnect() }
-            } catch (_: Exception) {}
-            if (ip.isNotEmpty()) break
-        }
+                val o = JSONObject(String(c.inputStream.bounded(16 * 1024)))
+                ip = o.optString("ip").trim(); country = o.optString("code").trim().lowercase()
+            } finally { c.disconnect() }
+        } catch (_: Exception) {}
         return Info(ip, country, delay(settings), SystemClock.elapsedRealtime())
     }
 

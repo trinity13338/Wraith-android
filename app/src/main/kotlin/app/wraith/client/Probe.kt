@@ -44,6 +44,7 @@ class XrayProbeService : VpnService() {
     private val cancelledSessions = HashSet<String>()
     private var draining = false; private var closed = false; private var lastStartId = 0
     private var xray: IsolatedXray? = null
+    private var localDns: LocalDns? = null
 
     private class Job(intent: Intent, val receiver: ResultReceiver) {
         val profile: String = intent.getStringExtra(EXTRA_PROFILE).orEmpty()
@@ -92,7 +93,7 @@ class XrayProbeService : VpnService() {
         val user = "probe-" + Store.randomSecret(8); val pass = Store.randomSecret(24)
         try {
             val core = xray ?: IsolatedXray(this).also { xray = it }
-            core.setDNS(XrayRuntimeConfig.dnsEndpoint("1.1.1.1"))
+            core.setDNS((localDns ?: LocalDns.open(this).also { localDns = it }).endpoint)
             batch.filterTo(probing) { !cancelled(it) }
             if (probing.isEmpty()) return
             val runtime = runtimeConfig(probing, ports, core, user, pass)
@@ -145,7 +146,7 @@ class XrayProbeService : VpnService() {
 
     override fun onDestroy() {
         synchronized(lock) { closed = true; pending.forEach { reply(it, -1, L.t("Проверка отменена.", "Test cancelled.")) }; pending.clear() }
-        worker.execute { xray?.resetDNS() }
+        worker.execute { xray?.resetDNS(); localDns?.close(); localDns = null }
         worker.shutdown()
         super.onDestroy()
     }
