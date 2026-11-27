@@ -231,8 +231,8 @@ fun Backdrop(photo: ImageBitmap?, blur: Float, dim: Float, state: Int) {
 }
 
 /**
- * The connect control: a wide pill with one line across it. Off, it is a sharp, jagged, still line.
- * Tapped, it smooths into a soft wave that runs, fast while connecting (like a Material 3 wavy progress
+ * The connect control: a wide pill with one line across it. Off, it is a straight, still line. Tapped,
+ * it rises into a soft wave that runs, fast while connecting (like a Material 3 wavy progress
  * indicator), then as fast and as high as the traffic.
  */
 @Composable
@@ -271,26 +271,20 @@ fun ConnectButton(state: Int, enabled: Boolean, rxRate: Long, txRate: Long, modi
     ) {
         Canvas(Modifier.fillMaxSize().padding(horizontal = 26.dp)) {
             val w = size.width; val fade = 30.dp.toPx()
-            val jagged = floatArrayOf(1f, 0.45f, 0.9f, 0.3f, 0.75f, 1f, 0.55f, 0.2f, 0.85f, 0.5f)
             fun wave(cy: Float, amp: Float, length: Float, phase: Float, stroke: Float) {
                 val path = androidx.compose.ui.graphics.Path()
                 val k = 2f * Math.PI.toFloat() / length
-                val sharp = 7.dp.toPx(); val pi = Math.PI.toFloat()
                 var x = 0f
                 while (true) {
-                    // Off: a zigzag with uneven teeth (each half period its own height; zero at the joins,
-                    // so it stays one line). On: a sine whose crests travel to the right. Morphed by smooth.
-                    val t = x * k * 1.6f
-                    val zig = sharp * jagged[(t / pi).toInt().mod(jagged.size)] * (2f / pi) * kotlin.math.asin(kotlin.math.sin(t))
-                    val sine = amp * kotlin.math.sin(x * k - phase)
-                    val y = cy + zig + (sine - zig) * smooth
+                    // Off: flat. On: a sine whose crests travel to the right; smooth raises it.
+                    val y = cy + amp * smooth * kotlin.math.sin(x * k - phase)
                     if (x == 0f) path.moveTo(x, y) else path.lineTo(x, y)
                     if (x >= w) break
                     x = minOf(w, x + 1.5f)
                 }
                 val c = ink; val clear = ink.copy(alpha = 0f)
                 val brush = Brush.horizontalGradient(0f to clear, fade / w to c, 1f - fade / w to c, 1f to clear, startX = 0f, endX = w)
-                drawPath(path, brush, style = androidx.compose.ui.graphics.drawscope.Stroke(stroke, cap = StrokeCap.Round, join = if (smooth < 0.5f) androidx.compose.ui.graphics.StrokeJoin.Miter else androidx.compose.ui.graphics.StrokeJoin.Round))
+                drawPath(path, brush, style = androidx.compose.ui.graphics.drawscope.Stroke(stroke, cap = StrokeCap.Round, join = androidx.compose.ui.graphics.StrokeJoin.Round))
             }
             wave(size.height / 2, amp.dp.toPx(), 28.dp.toPx(), phase, 5.dp.toPx())
         }
